@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kick VIP Mesaj Filtresi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0e11;
+            color: #e0e0e0;
+        }
+
+        /* Kick Neon Green Theme */
+        .kick-green { color: #53fc18; }
+        .bg-kick-green { background-color: #53fc18; }
+        .border-kick-green { border-color: #53fc18; }
+        .hover-kick-green:hover { background-color: #42c913; }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1a1d21;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #34383e;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #53fc18;
+        }
+
+        .message-card {
+            animation: slideIn 0.3s ease-out forwards;
+            border-left: 4px solid transparent;
+        }
+        
+        .message-card:hover {
+            background-color: #1e2126;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Sol Panel: Ayarlar -->
+    <div class="w-full md:w-1/3 lg:w-1/4 bg-[#14171a] border-r border-[#24272c] flex flex-col p-6 shadow-lg z-10">
+        <div class="mb-8 flex items-center gap-3">
+            <div class="w-10 h-10 bg-kick-green rounded flex items-center justify-center text-black font-bold text-xl">K</div>
+            <h1 class="text-2xl font-bold text-white tracking-tight">VIP Filtresi</h1>
+        </div>
+
+        <!-- Bağlantı Ayarları -->
+        <div class="space-y-6 flex-grow">
+            
+            <!-- Kanal Girişi -->
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Yayıncı Kanalı</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-3 text-gray-500"><i class="fas fa-hashtag"></i></span>
+                    <input type="text" id="channelInput" placeholder="Örn: elraenn" 
+                        class="w-full bg-[#0b0e11] text-white border border-[#24272c] rounded-lg py-2.5 pl-10 pr-3 focus:outline-none focus:border-kick-green focus:ring-1 focus:ring-kick-green transition-all"
+                    >
+                </div>
+            </div>
+
+            <!-- Hedef Kişiler -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">Takip Edilecek Kişiler</label>
+                    <span class="text-[10px] text-gray-500 bg-[#24272c] px-2 py-0.5 rounded">Virgülle ayırın</span>
+                </div>
+                <textarea id="vipInput" placeholder="kullanici1, kullanici2, mod_adi..." 
+                    class="w-full h-32 bg-[#0b0e11] text-white border border-[#24272c] rounded-lg p-3 focus:outline-none focus:border-kick-green focus:ring-1 focus:ring-kick-green transition-all resize-none custom-scrollbar text-sm"
+                ></textarea>
+                <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i> Sadece buraya yazdığınız kullanıcıların mesajları sağ tarafta görünecektir.</p>
+            </div>
+
+            <!-- Durum ve Butonlar -->
+            <div class="pt-4 border-t border-[#24272c]">
+                <div id="statusIndicator" class="flex items-center gap-2 mb-4 text-sm text-gray-400">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 transition-colors duration-300" id="statusDot"></span>
+                    <span id="statusText">Bağlantı Bekleniyor</span>
+                </div>
+
+                <button id="connectBtn" class="w-full bg-kick-green hover:bg-[#42c913] text-black font-bold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(83,252,24,0.3)]">
+                    <i class="fas fa-plug"></i> Bağlan ve Filtrele
+                </button>
+                
+                <button id="stopBtn" class="w-full mt-3 bg-[#24272c] hover:bg-[#2f3338] text-white font-semibold py-3 px-4 rounded-lg transition duration-200 hidden">
+                    <i class="fas fa-stop mr-2"></i> Bağlantıyı Kes
+                </button>
+            </div>
+        </div>
+        
+        <div class="mt-auto text-xs text-center text-gray-600 pt-4">
+            Kick Chat API v2 kullanmaktadır.
+        </div>
+    </div>
+
+    <!-- Sağ Panel: Mesaj Akışı -->
+    <div class="flex-grow flex flex-col bg-[#0b0e11] relative">
+        <!-- Header -->
+        <div class="h-16 border-b border-[#24272c] flex items-center justify-between px-6 bg-[#14171a]">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-stream text-kick-green"></i>
+                <span class="font-bold text-lg">Canlı Akış</span>
+                <span id="connectedChannelName" class="text-xs text-gray-500 ml-2 border border-gray-700 px-2 py-0.5 rounded hidden"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="clearChatBtn" class="text-gray-400 hover:text-white text-sm transition-colors" title="Temizle">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                <div class="text-xs text-gray-500">
+                    Yakalanan: <span id="messageCount" class="text-white font-bold">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Alanı -->
+        <div id="chatContainer" class="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-3 scroll-smooth">
+            <!-- Boş Durum -->
+            <div id="emptyState" class="h-full flex flex-col items-center justify-center text-gray-600 opacity-50">
+                <i class="fas fa-filter text-6xl mb-4"></i>
+                <p class="text-lg">Filtrelenen mesajlar burada görünecek</p>
+            </div>
+        </div>
+        
+        <!-- Yeni mesaj uyarısı (scroll yukarıdaysa) -->
+        <div id="newMessagesAlert" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-kick-green text-black px-4 py-2 rounded-full font-bold text-sm shadow-lg cursor-pointer hidden animate-bounce">
+            Yeni Mesajlar <i class="fas fa-arrow-down ml-1"></i>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const channelInput = document.getElementById('channelInput');
+        const vipInput = document.getElementById('vipInput');
+        const connectBtn = document.getElementById('connectBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const chatContainer = document.getElementById('chatContainer');
+        const emptyState = document.getElementById('emptyState');
+        const messageCountDisplay = document.getElementById('messageCount');
+        const connectedChannelNameDisplay = document.getElementById('connectedChannelName');
+        const clearChatBtn = document.getElementById('clearChatBtn');
+        const newMessagesAlert = document.getElementById('newMessagesAlert');
+
+        // Variables
+        let socket = null;
+        let chatroomId = null;
+        let messageCount = 0;
+        let isAutoScroll = true;
+        let reconnectTimeout = null;
+        let currentChannel = '';
+
+        // Constants
+        const KICK_API_URL = "https://kick.com/api/v2/channels/";
+        const PUSHER_WSS_URL = "wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679?protocol=7&client=js&version=8.4.0-rc2&flash=false";
+
+        // Emote Parsing Logic (Reuse from drawing game)
+        function parseMessageForEmotes(message) {
+            const emoteRegex = /\[emote:(\d+):(.+?)\]/g;
+            return message.replace(emoteRegex, (match, emoteId, emoteName) => {
+                return `<img src="https://files.kick.com/emotes/${emoteId}/fullsize" alt="${emoteName}" title="${emoteName}" class="inline-block h-8 w-auto mx-1 align-middle hover:scale-150 transition-transform cursor-pointer">`;
+            });
+        }
+
+        // Get Target Users List
+        function getTargetUsers() {
+            const rawText = vipInput.value;
+            if (!rawText.trim()) return [];
+            // Split by comma, trim whitespace, convert to lowercase
+            return rawText.split(',').map(user => user.trim().toLowerCase()).filter(user => user.length > 0);
+        }
+
+        // UI Updates
+        function setStatus(state, message = "") {
+            if (state === 'connecting') {
+                statusDot.className = 'w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse';
+                statusText.textContent = message || 'Bağlanılıyor...';
+                connectBtn.disabled = true;
+                connectBtn.classList.add('opacity-50');
+            } else if (state === 'connected') {
+                statusDot.className = 'w-2.5 h-2.5 rounded-full bg-kick-green shadow-[0_0_8px_#53fc18]';
+                statusText.textContent = `Bağlandı: ${currentChannel}`;
+                statusText.classList.add('text-kick-green');
+                connectBtn.classList.add('hidden');
+                stopBtn.classList.remove('hidden');
+                channelInput.disabled = true;
+                connectedChannelNameDisplay.textContent = currentChannel;
+                connectedChannelNameDisplay.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+            } else if (state === 'disconnected') {
+                statusDot.className = 'w-2.5 h-2.5 rounded-full bg-red-500';
+                statusText.textContent = message || 'Bağlantı Kesildi';
+                statusText.classList.remove('text-kick-green');
+                connectBtn.disabled = false;
+                connectBtn.classList.remove('opacity-50', 'hidden');
+                stopBtn.classList.add('hidden');
+                channelInput.disabled = false;
+                connectedChannelNameDisplay.classList.add('hidden');
+            }
+        }
+
+        // Add Message to Chat
+        function addMessageToChat(sender, message, color, identity) {
+            messageCount++;
+            messageCountDisplay.textContent = messageCount;
+
+            const div = document.createElement('div');
+            div.className = 'message-card bg-[#14171a] p-4 rounded-lg border-l-4 border-kick-green shadow-sm group relative';
+            
+            // Determine badge based on identity (simplified)
+            let badgesHtml = '';
+            // Note: In a real complete implementation we would check badges array, 
+            // but for now we just highlight the user.
+
+            // Format Time
+            const now = new Date();
+            const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+
+            div.innerHTML = `
+                <div class="flex justify-between items-start mb-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 font-mono">[${timeString}]</span>
+                        <span class="font-bold text-lg hover:underline cursor-pointer" style="color: ${color || '#53fc18'}">${sender}</span>
+                    </div>
+                    <button class="text-gray-600 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity text-xs" onclick="this.parentElement.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="text-gray-200 text-[15px] leading-relaxed break-words pl-14 -mt-1">
+                    ${parseMessageForEmotes(message)}
+                </div>
+            `;
+
+            chatContainer.appendChild(div);
+
+            // Auto Scroll Handling
+            if (isAutoScroll) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            } else {
+                newMessagesAlert.classList.remove('hidden');
+            }
+        }
+
+        // Main Connection Logic
+        async function connectToKick() {
+            const channelName = channelInput.value.trim();
+            const targetUsers = getTargetUsers();
+
+            if (!channelName) {
+                alert("Lütfen bir kanal adı girin.");
+                return;
+            }
+
+            if (targetUsers.length === 0) {
+                if(!confirm("Herhangi bir kişi listesi girmediniz. Tüm mesajlar akacak (çok hızlı olabilir). Devam etmek istiyor musunuz?")) {
+                    return;
+                }
+            }
+
+            setStatus('connecting');
+            currentChannel = channelName;
+
+            try {
+                // 1. Fetch Chatroom ID
+                const response = await fetch(`${KICK_API_URL}${channelName}`);
+                if (!response.ok) throw new Error('Kanal bulunamadı.');
+                
+                const data = await response.json();
+                if (!data.chatroom || !data.chatroom.id) throw new Error('Chat odası bilgisi alınamadı.');
+                
+                chatroomId = data.chatroom.id;
+
+                // 2. Connect to WebSocket (Pusher)
+                socket = new WebSocket(PUSHER_WSS_URL);
+
+                socket.onopen = () => {
+                    setStatus('connected');
+                    // Subscribe to chat channel
+                    const subscribePayload = {
+                        event: 'pusher:subscribe',
+                        data: { auth: '', channel: `chatrooms.${chatroomId}.v2` }
+                    };
+                    socket.send(JSON.stringify(subscribePayload));
+                };
+
+                socket.onmessage = (event) => {
+                    const payload = JSON.parse(event.data);
+                    
+                    if (payload.event === 'App\\Events\\ChatMessageEvent') {
+                        const chatData = JSON.parse(payload.data);
+                        
+                        // Extract Data
+                        const senderName = chatData.sender.username;
+                        const content = chatData.content;
+                        const senderColor = chatData.sender.identity.color;
+
+                        // FILTERING LOGIC
+                        const targets = getTargetUsers(); // Re-read input to allow dynamic updates
+                        
+                        // If list is empty, show all. If list has names, filter.
+                        if (targets.length === 0 || targets.includes(senderName.toLowerCase())) {
+                            addMessageToChat(senderName, content, senderColor, chatData.sender.identity);
+                        }
+                    }
+                };
+
+                socket.onclose = () => {
+                    // If it was a manual stop, don't show error
+                    if (statusText.textContent !== 'Bağlantı Kesildi') {
+                        setStatus('disconnected', 'Bağlantı koptu.');
+                    }
+                };
+
+                socket.onerror = (err) => {
+                    console.error("WebSocket Error:", err);
+                    setStatus('disconnected', 'Bağlantı Hatası');
+                };
+
+            } catch (error) {
+                console.error("Connection Error:", error);
+                setStatus('disconnected', `Hata: ${error.message}`);
+            }
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
+            setStatus('disconnected');
+        }
+
+        // Event Listeners
+        connectBtn.addEventListener('click', connectToKick);
+        stopBtn.addEventListener('click', disconnect);
+
+        clearChatBtn.addEventListener('click', () => {
+            chatContainer.innerHTML = '';
+            if (socket) { // If connected keep empty state hidden, else show it
+                // nothing
+            } else {
+                chatContainer.appendChild(emptyState);
+                emptyState.classList.remove('hidden');
+            }
+            messageCount = 0;
+            messageCountDisplay.textContent = '0';
+        });
+
+        // Handle Scroll (Auto-scroll logic)
+        chatContainer.addEventListener('scroll', () => {
+            const threshold = 50;
+            const position = chatContainer.scrollTop + chatContainer.offsetHeight;
+            const height = chatContainer.scrollHeight;
+            
+            if (position > height - threshold) {
+                isAutoScroll = true;
+                newMessagesAlert.classList.add('hidden');
+            } else {
+                isAutoScroll = false;
+            }
+        });
+
+        newMessagesAlert.addEventListener('click', () => {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            isAutoScroll = true;
+            newMessagesAlert.classList.add('hidden');
+        });
+
+        // Handle Enter key in channel input
+        channelInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') connectToKick();
+        });
+
+    </script>
+</body>
+</html>
